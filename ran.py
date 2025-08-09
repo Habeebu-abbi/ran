@@ -162,13 +162,14 @@ def process_next_day(df_month):
 # Apply full cell color formatting
 def color_cells(val):
     if isinstance(val, (int, float)):
-        if val > 90:
+        if val >= 95:
             return 'background-color: #4CAF50; color: white'  # Green
-        elif val > 80:
+        elif val >= 85:
             return 'background-color: #FFEB3B; color: black'  # Yellow
         else:
             return 'background-color: #F44336; color: white'  # Red
     return ''
+
 
 # Format the entire dataframe with color
 def format_dataframe(df, percentage_cols):
