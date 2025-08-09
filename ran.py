@@ -82,7 +82,7 @@ def process_same_day(df_month):
     
     return pd.DataFrame(same_day_data)
 
-# Process data for next day performance
+# Process data for next day performance (special customers after 3PM only)
 def process_next_day(df_month):
     next_day_data = []
     
@@ -103,42 +103,43 @@ def process_next_day(df_month):
     
     for date in dates_in_month:
         date_str = date.strftime('%Y-%m-%d')
-        next_date = date + pd.Timedelta(days=1)
+        previous_date = date - pd.Timedelta(days=1)
         
-        # Get all orders picked after 3PM yesterday (for today's date)
-        yesterday_3pm_orders = df_month[
-            (df_month['Picked on'].dt.date == date.date()) &
+        # Filter ONLY special customer orders picked after 3PM the previous day
+        special_orders = df_month[
+            (df_month['Customer'].isin(special_customers)) &
+            (df_month['Picked on'].dt.date == previous_date.date()) &
             (df_month['Picked on'].dt.hour >= 15)
         ]
         
-        # Total next day orders (picked yesterday after 3PM)
-        next_day_orders_count = len(yesterday_3pm_orders)
+        # Total next day orders (only special orders picked previous day after 3PM)
+        next_day_orders_count = len(special_orders)
         
         # Attempted logic:
-        # 1. First attempted yesterday (same day as picked)
-        attempted_yesterday = len(yesterday_3pm_orders[
-            (yesterday_3pm_orders['First attempted on'].dt.date == date.date())
+        # 1. First attempted on previous day (same day as picked)
+        attempted_previous_day = len(special_orders[
+            (special_orders['First attempted on'].dt.date == previous_date.date())
         ])
         
-        # 2. First attempted today (next day)
-        attempted_today = len(yesterday_3pm_orders[
-            (yesterday_3pm_orders['First attempted on'].dt.date == next_date.date())
+        # 2. First attempted on current date (next day)
+        attempted_current_day = len(special_orders[
+            (special_orders['First attempted on'].dt.date == date.date())
         ])
         
-        total_attempted = attempted_yesterday + attempted_today
+        total_attempted = attempted_previous_day + attempted_current_day
         
         # Delivered logic:
-        # 1. Delivered yesterday (same day as picked)
-        delivered_yesterday = len(yesterday_3pm_orders[
-            (yesterday_3pm_orders['Delivered on'].dt.date == date.date())
+        # 1. Delivered on previous day (same day as picked)
+        delivered_previous_day = len(special_orders[
+            (special_orders['Delivered on'].dt.date == previous_date.date())
         ])
         
-        # 2. Delivered today (next day)
-        delivered_today = len(yesterday_3pm_orders[
-            (yesterday_3pm_orders['Delivered on'].dt.date == next_date.date())
+        # 2. Delivered on current date (next day)
+        delivered_current_day = len(special_orders[
+            (special_orders['Delivered on'].dt.date == date.date())
         ])
         
-        total_delivered = delivered_yesterday + delivered_today
+        total_delivered = delivered_previous_day + delivered_current_day
         
         # Calculate percentages
         attempted_pct = (total_attempted / next_day_orders_count * 100) if next_day_orders_count > 0 else 0
@@ -151,10 +152,10 @@ def process_next_day(df_month):
             'Attempted %': round(attempted_pct, 2),
             'Delivered': total_delivered,
             'Delivered %': round(delivered_pct, 2),
-            'Attempted Yesterday': attempted_yesterday,
-            'Attempted Today': attempted_today,
-            'Delivered Yesterday': delivered_yesterday,
-            'Delivered Today': delivered_today
+            'Attempted Previous Day': attempted_previous_day,
+            'Attempted Current Day': attempted_current_day,
+            'Delivered Previous Day': delivered_previous_day,
+            'Delivered Current Day': delivered_current_day
         })
     
     return pd.DataFrame(next_day_data)
@@ -169,7 +170,6 @@ def color_cells(val):
         else:
             return 'background-color: #F44336; color: white'  # Red
     return ''
-
 
 # Format the entire dataframe with color
 def format_dataframe(df, percentage_cols):
@@ -260,7 +260,7 @@ def main():
                     st.dataframe(styled_same_day, use_container_width=True)
                     
                     # Display Next Day table with full color formatting
-                    st.subheader("Next Day Performance")
+                    st.subheader("Next Day Performance (Special Customers after 3PM only)")
                     styled_next_day = format_dataframe(
                         next_day_df[['Date', 'Next day Orders', 'Attempted', 'Attempted %', 'Delivered', 'Delivered %']],
                         percentage_cols=['Attempted %', 'Delivered %']
@@ -270,14 +270,15 @@ def main():
                     # Show additional details in expander
                     with st.expander("Show Next Day Detailed Breakdown"):
                         st.write("""
-                        - **Attempted Yesterday**: First attempt on same day as pickup (after 3PM)
-                        - **Attempted Today**: First attempt on next day after pickup
-                        - **Delivered Yesterday**: Delivered on same day as pickup (after 3PM)
-                        - **Delivered Today**: Delivered on next day after pickup
+                        - **Next Day Orders**: Special customer orders picked after 3PM previous day
+                        - **Attempted Previous Day**: First attempt on same day as pickup (after 3PM)
+                        - **Attempted Current Day**: First attempt on next day after pickup
+                        - **Delivered Previous Day**: Delivered on same day as pickup (after 3PM)
+                        - **Delivered Current Day**: Delivered on next day after pickup
                         """)
                         st.dataframe(next_day_df[['Date', 'Next day Orders', 
-                                                'Attempted Yesterday', 'Attempted Today',
-                                                'Delivered Yesterday', 'Delivered Today']])
+                                              'Attempted Previous Day', 'Attempted Current Day',
+                                              'Delivered Previous Day', 'Delivered Current Day']])
                     
                     # Show comparison graphs
                     st.subheader("Performance Comparison")
