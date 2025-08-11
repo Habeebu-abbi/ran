@@ -83,13 +83,17 @@ def process_same_day(df_month):
     return pd.DataFrame(same_day_data)
 
 # Process data for next day performance (special customers after 3PM only)
-def process_next_day(df_month):
+def process_next_day(df_month, df_full, month_num):
     next_day_data = []
     
-    # Get unique dates in the month
+    # Get the first and last dates of the current month's data
+    min_date = df_month['Picked on'].min()
+    max_date = df_month['Picked on'].max()
+    
+    # Create date range for the entire month (not just days with data)
     dates_in_month = pd.date_range(
-        start=df_month['Picked on'].min().replace(day=1),
-        end=df_month['Picked on'].max() + pd.Timedelta(days=1),
+        start=datetime(min_date.year, month_num, 1),
+        end=datetime(min_date.year, month_num, 1) + pd.offsets.MonthEnd(1),
         freq='D'
     )
     
@@ -101,15 +105,30 @@ def process_next_day(df_month):
         'Heads Up for Tails HUFT'
     ]
     
+    # Get previous month number and year
+    prev_month = month_num - 1 if month_num > 1 else 12
+    prev_year = min_date.year if month_num > 1 else min_date.year - 1
+    
     for date in dates_in_month:
         date_str = date.strftime('%Y-%m-%d')
         previous_date = date - pd.Timedelta(days=1)
         
+        # Determine which dataframe to use for the previous day's data
+        if previous_date.month == month_num:
+            # Previous day is in same month - use current month's data
+            prev_day_df = df_month
+        else:
+            # Previous day is in previous month - use previous month's data from full dataframe
+            prev_day_df = df_full[
+                (df_full['Picked on'].dt.month == prev_month) & 
+                (df_full['Picked on'].dt.year == prev_year)
+            ]
+        
         # Filter ONLY special customer orders picked after 3PM the previous day
-        special_orders = df_month[
-            (df_month['Customer'].isin(special_customers)) &
-            (df_month['Picked on'].dt.date == previous_date.date()) &
-            (df_month['Picked on'].dt.hour >= 15)
+        special_orders = prev_day_df[
+            (prev_day_df['Customer'].isin(special_customers)) &
+            (prev_day_df['Picked on'].dt.date == previous_date.date()) &
+            (prev_day_df['Picked on'].dt.hour >= 15)
         ]
         
         # Total next day orders (only special orders picked previous day after 3PM)
@@ -251,7 +270,7 @@ def main():
                 if not month_data.empty:
                     # Process data for same day and next day performance
                     same_day_df = process_same_day(month_data)
-                    next_day_df = process_next_day(month_data)
+                    next_day_df = process_next_day(month_data, df, month_num)
                     
                     # Display Same Day table with full color formatting
                     st.subheader("Same Day Performance")
