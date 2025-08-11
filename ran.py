@@ -229,9 +229,11 @@ def main():
         df = load_data(uploaded_file)
         
         # Create tabs for each month
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["April", "May", "June", "July", "August"])
+        tab_names = ["March", "April", "May", "June", "July", "August"]
+        tabs = st.tabs(tab_names)
         
         months = {
+            'March': 3,
             'April': 4,
             'May': 5,
             'June': 6,
@@ -239,8 +241,8 @@ def main():
             'August': 8
         }
         
-        for month_name, month_num in months.items():
-            with eval(f'tab{month_num-3}'):  # This dynamically selects the right tab
+        for i, (month_name, month_num) in enumerate(months.items()):
+            with tabs[i]:  # Use the index to access the correct tab
                 st.header(month_name)
                 
                 # Filter data for the month
