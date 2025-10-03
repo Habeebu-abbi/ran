@@ -130,6 +130,7 @@ def process_next_day(df_month, df_full, month_num, hub_filter="All", hub_column=
         'WESTSIDE UNIT OF TRENT LIMITED', 
         'TATA CLiQ', 
         'ZISHTA TRADITIONS PRIVATE LIMITED', 
+        'Ugaoo',
         'Heads Up for Tails HUFT'
     ]
     
@@ -429,17 +430,14 @@ def main():
             st.write("Available columns in your CSV:")
             st.write(list(df.columns))
         
-        # Create tabs for each month
-        tab_names = ["March", "April", "May", "June", "July", "August"]
+        # Create tabs for July, August, September only
+        tab_names = ["July", "August", "September"]
         tabs = st.tabs(tab_names)
         
         months = {
-            'March': 3,
-            'April': 4,
-            'May': 5,
-            'June': 6,
             'July': 7,
-            'August': 8
+            'August': 8,
+            'September': 9
         }
         
         for i, (month_name, month_num) in enumerate(months.items()):
